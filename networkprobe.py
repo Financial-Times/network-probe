@@ -11,7 +11,8 @@ class probe(object):
     '''This class consists of two parts: a listening part that holds
     open a number of sockets, and a connector that connects to those sockets
 
-    The idea is to measure connectivity between two or more networks.
+    The idea is to measure connectivity between two or more networks, and report that
+    to graphite
     '''
 
     def __init__(self, configFile = 'config.yml'):
@@ -21,6 +22,7 @@ class probe(object):
         self.portList       = []
         self.hostList       = []
         self.running        = True
+        self.graphiteList   = []
         self.threads        = []
 
     def readConfig(self):
@@ -34,8 +36,9 @@ class probe(object):
                 logging.error("Unable to open config file: {0}".format(e))
 
             try:
-                self.portList = config['portlist']
-                self.hostList = config['hosts']
+                self.portList       = config['ports']
+                self.hostList       = config['hosts']
+                self.graphiteList   = config['graphitehost']
             except Exception, e:
                 logging.error("Error in config file: {0}\n\tThis is possibly a typo".format(e))
 
@@ -95,8 +98,11 @@ class probe(object):
                             except Exception, e:
                                 logging.error('Unable to reply with FAILURE: {0}'.format(e))
                             socketList.remove(connection)
-    def listen(self):
+        logging.debug('Thread shutting down')
+
+    def listen(self ):
         '''Iterates through self.portList and spawns a listenPort thread for each port
+
         '''
         for port in self.portList:
             listenThread = threading.Thread(target=self.listenPort,args=[port],name="port{0}".format(port))

@@ -1,0 +1,24 @@
+#Config file for networkprobe
+#example:
+#hosts:
+#   - host1
+#   - host2
+#ports:
+#   - 80
+#   - 8080
+#   - 2003
+#graphitehost:
+#   graphite.ft.com
+#
+#This will cause the probe to listen on ports 80, 8080 & 2003
+#It will attempt to connect to each host (host1, host2) on those
+#ports
+
+hosts:
+    - 127.0.0.1
+    - dave
+ports:
+    - 2000
+    - 3000
+graphitehost:
+    graphite.ft.com
