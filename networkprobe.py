@@ -25,7 +25,8 @@ class probe(object):
         self.graphiteHost   = ''
         self.graphitePrefix = ''
         self.threads        = []
-        self.timeout        = 1 # in seconds
+        self.timeout        = 1 # connection timeout in seconds
+        self.metrics        = []
 
     def readConfig(self):
         '''Reads the yaml file in configFile and populates the
@@ -126,7 +127,7 @@ class probe(object):
                 connection.connect((hostname,port))
                 failure = False
             except Exception, e:
-                logging.error('Couldn\'t connect to: {0}'.format(e))
+                logging.debug('Couldn\'t connect to: {0}'.format(e))
                 failure = True
 
             try:
@@ -136,15 +137,19 @@ class probe(object):
                     #then we have a correct round trip
                     connection.close()
             except Exception, e:
-                logging.error('Unable to send PING message: {0}'.format(e))
+                logging.debug('Unable to send PING message: {0}'.format(e))
                 failure = True
 
             if failure:
-                print 'poop'
+                logging.error('failed to connect properly')
+            else:
+                timeDelta = time.time() - timeDelta
+                #Build a string for graphite, self.graphitePrefix.hostname.port <value> <timestamp>\n
+                self.metrics.append('{0}.{1}.{2} {3} {4}\n'.format(self.graphitePrefix, hostname, port, timeDelta, time.time()))
+                logging.debug('time taken for port {0}: {1}'.format(port, timeDelta))
 
-            timeDelta = time.time() - timeDelta
-            logging.debug('time taken for port {0}: {1}'.format(port, timeDelta))
-
-
+    def connect(self):
+        '''lauches a connectHost thread for all hosts in self.hostList
+        '''
 
 
