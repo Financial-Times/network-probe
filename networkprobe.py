@@ -14,7 +14,7 @@ class probe(object):
     The idea is to measure connectivity between two or more networks, and report that
     to graphite
     '''
-
+    #pylint: disable=too-many-instance-attributes
     def __init__(self, configFile = 'config.yml'):
         '''ENGAGE
         '''
@@ -22,8 +22,10 @@ class probe(object):
         self.portList       = []
         self.hostList       = []
         self.running        = True
-        self.graphiteList   = []
+        self.graphiteHost   = ''
+        self.graphitePrefix = ''
         self.threads        = []
+        self.timeout        = 1 # in seconds
 
     def readConfig(self):
         '''Reads the yaml file in configFile and populates the
@@ -38,7 +40,8 @@ class probe(object):
             try:
                 self.portList       = config['ports']
                 self.hostList       = config['hosts']
-                self.graphiteList   = config['graphitehost']
+                self.graphiteHost   = config['graphitehost']
+                self.graphitePrefix = config['graphiteprefix']
             except Exception, e:
                 logging.error("Error in config file: {0}\n\tThis is possibly a typo".format(e))
 
@@ -102,7 +105,6 @@ class probe(object):
 
     def listen(self ):
         '''Iterates through self.portList and spawns a listenPort thread for each port
-
         '''
         for port in self.portList:
             listenThread = threading.Thread(target=self.listenPort,args=[port],name="port{0}".format(port))
@@ -112,4 +114,37 @@ class probe(object):
 
         while self.running:
             time.sleep(1)
+    def connectHost(self, hostname):
+        '''connects to a host and loops through and tries each port
+        in self.portList in turn. Records the time it takes to connect(if successful)
+        '''
+        for port in self.portList:
+            connection = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            connection.settimeout(self.timeout)
+            timeDelta = time.time()
+            try:
+                connection.connect((hostname,port))
+                failure = False
+            except Exception, e:
+                logging.error('Couldn\'t connect to: {0}'.format(e))
+                failure = True
+
+            try:
+                connection.send('PING\n')
+                data = connection.recv(1024)
+                if data == 'PONG\n':
+                    #then we have a correct round trip
+                    connection.close()
+            except Exception, e:
+                logging.error('Unable to send PING message: {0}'.format(e))
+                failure = True
+
+            if failure:
+                print 'poop'
+
+            timeDelta = time.time() - timeDelta
+            logging.debug('time taken for port {0}: {1}'.format(port, timeDelta))
+
+
+
 
