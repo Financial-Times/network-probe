@@ -9,10 +9,15 @@
 #   - 2003
 #graphitehost:
 #   graphite.ft.com
+#graphiteprefix:
+#   networkprobe.dev
 #
 #This will cause the probe to listen on ports 80, 8080 & 2003
 #It will attempt to connect to each host (host1, host2) on those
 #ports
+#
+#It will attempt to push data to the graphite server named in
+#graphitehost with the prefix
 
 hosts:
     - 127.0.0.1
@@ -22,3 +27,5 @@ ports:
     - 3000
 graphitehost:
     graphite.ft.com
+graphiteprefix:
+    networkprobe.dev
