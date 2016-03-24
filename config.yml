@@ -1,5 +1,7 @@
 #Config file for networkprobe
 #example:
+#cycletime:
+#   60
 #hosts:
 #   - host1
 #   - host2
@@ -16,9 +18,12 @@
 #It will attempt to connect to each host (host1, host2) on those
 #ports
 #
+#It will wait 60 seconds between connection attempts
+#
 #It will attempt to push data to the graphite server named in
 #graphitehost with the prefix
-
+cycletime:
+    60
 hosts:
     - 127.0.0.1
     - dave
@@ -28,4 +33,4 @@ ports:
 graphitehost:
     graphite.ft.com
 graphiteprefix:
-    networkprobe.dev
+    networks.networkprobe.dev

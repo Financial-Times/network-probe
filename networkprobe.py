@@ -6,7 +6,7 @@ import socket
 import select
 import logging
 import threading
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.DEBUG, format='[%(threadName)-10s] %(message)s')
 class probe(object):
     '''This class consists of two parts: a listening part that holds
     open a number of sockets, and a connector that connects to those sockets
@@ -24,8 +24,10 @@ class probe(object):
         self.running        = True
         self.graphiteHost   = ''
         self.graphitePrefix = ''
+        self.graphitePort   = 2003
         self.threads        = []
-        self.timeout        = 1 # connection timeout in seconds
+        self.cycleTime      = 60 # seconds
+        self.timeout        = 0.5 # connection timeout in seconds
         self.metrics        = []
 
     def readConfig(self):
@@ -43,8 +45,11 @@ class probe(object):
                 self.hostList       = config['hosts']
                 self.graphiteHost   = config['graphitehost']
                 self.graphitePrefix = config['graphiteprefix']
+                self.cycleTime      = config['cycletime']
             except Exception, e:
                 logging.error("Error in config file: {0}\n\tThis is possibly a typo".format(e))
+
+            return {'portlist': self.portList, 'hostlist': self.hostList, 'graphiteHost': self.graphiteHost, 'graphitePrefix': self.graphitePrefix}
 
     def listenPort(self, port):
         '''Opens a single port and listens for connections.
@@ -113,8 +118,8 @@ class probe(object):
             listenThread.start()
             self.threads.append(listenThread)
 
-        while self.running:
-            time.sleep(1)
+        #while self.running:
+        #    time.sleep(1)
     def connectHost(self, hostname):
         '''connects to a host and loops through and tries each port
         in self.portList in turn. Records the time it takes to connect(if successful)
@@ -145,11 +150,39 @@ class probe(object):
             else:
                 timeDelta = time.time() - timeDelta
                 #Build a string for graphite, self.graphitePrefix.hostname.port <value> <timestamp>\n
-                self.metrics.append('{0}.{1}.{2} {3} {4}\n'.format(self.graphitePrefix, hostname, port, timeDelta, time.time()))
+                metricString = '{0}.{1}.{2} {3} {4}\n'.format(self.graphitePrefix, hostname, port, timeDelta, time.time())
+                self.metrics.append(metricString)
                 logging.debug('time taken for port {0}: {1}'.format(port, timeDelta))
 
     def connect(self):
         '''lauches a connectHost thread for all hosts in self.hostList
         '''
+        while self.running:
+            for host in self.hostList:
+                self.connectHost(host)
+                time.sleep(1)
+            time.sleep(self.cycleTime)
+            logging.debug(len(self.metrics))
+            self.updateGraphite()
+
+
+    def updateGraphite(self):
+        '''Takes the array of strings that is self.metrics and pushes it to the graphite
+        server specified in self.graphiteHost
+        '''
+        logging.debug('begin sending to graphite')
+        connection = socket.socket()
+        try:
+            connection.connect((self.graphiteHost, self.graphitePort))
+            logging.debug('connection successfull, sending graphite ')
+            connection.sendall(str(self.metrics))
+            logging.debug('all metrics sent')
+            self.metrics = []
+            connection.close()
+        except Exception, e:
+            logging.error('error updating the graphite server: {0}'.format(e))
+
+
+
 
 
