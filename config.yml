@@ -25,12 +25,15 @@
 cycletime:
     60
 hosts:
-    - 127.0.0.1
+    - localhost 
     - dave
 ports:
     - 2000
     - 3000
 graphitehost:
-    graphite.ft.com
+    graphite.ft.com 
 graphiteprefix:
     networks.networkprobe.dev
+
+hostname:
+    test

@@ -29,6 +29,7 @@ class probe(object):
         self.cycleTime      = 60 # seconds
         self.timeout        = 0.5 # connection timeout in seconds
         self.metrics        = []
+        self.hostname       = socket.gethostname()
 
     def readConfig(self):
         '''Reads the yaml file in configFile and populates the
@@ -46,10 +47,12 @@ class probe(object):
                 self.graphiteHost   = config['graphitehost']
                 self.graphitePrefix = config['graphiteprefix']
                 self.cycleTime      = config['cycletime']
+                if 'hostname' in config:
+                    self.hostname   = config['hostname']
             except Exception, e:
                 logging.error("Error in config file: {0}\n\tThis is possibly a typo".format(e))
 
-            return {'portlist': self.portList, 'hostlist': self.hostList, 'graphiteHost': self.graphiteHost, 'graphitePrefix': self.graphitePrefix}
+            return {'portlist': self.portList, 'hostlist': self.hostList, 'graphiteHost': self.graphiteHost, 'graphitePrefix': self.graphitePrefix, 'hostname': self.hostname}
 
     def listenPort(self, port):
         '''Opens a single port and listens for connections.
@@ -113,7 +116,7 @@ class probe(object):
         '''Iterates through self.portList and spawns a listenPort thread for each port
         '''
         for port in self.portList:
-            listenThread = threading.Thread(target=self.listenPort,args=[port],name="port{0}".format(port))
+            listenThread = threading.Thread(target=self.listenPort,args=[port],name="port {0}".format(port))
             listenThread.setDaemon(True)
             listenThread.start()
             self.threads.append(listenThread)
@@ -150,7 +153,7 @@ class probe(object):
             else:
                 timeDelta = time.time() - timeDelta
                 #Build a string for graphite, self.graphitePrefix.hostname.port <value> <timestamp>\n
-                metricString = '{0}.{1}.{2} {3} {4}\n'.format(self.graphitePrefix, hostname, port, timeDelta, time.time())
+                metricString = '{0}.{1}.target.{2}.{3} {4} {5}\n'.format(self.graphitePrefix,self.hostname, hostname, port, timeDelta, int(time.time()))
                 self.metrics.append(metricString)
                 logging.debug('time taken for port {0}: {1}'.format(port, timeDelta))
 
@@ -175,7 +178,8 @@ class probe(object):
         try:
             connection.connect((self.graphiteHost, self.graphitePort))
             logging.debug('connection successfull, sending graphite ')
-            connection.sendall(str(self.metrics))
+            for metric in self.metrics:
+                connection.send(metric)
             logging.debug('all metrics sent')
             self.metrics = []
             connection.close()
@@ -184,5 +188,14 @@ class probe(object):
 
 
 
+##
+##If we are running directly....
+##
+
+if __name__ == '__main__':
+    prober = probe()
+    print prober.readConfig()
+    prober.listen()
+    prober.connect()
 
 
